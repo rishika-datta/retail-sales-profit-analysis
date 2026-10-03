@@ -436,4 +436,4 @@ The purpose is to demonstrate analytical and business-analysis capability using 
 
 ---
 
-**Author:** [Your Name] · [Your LinkedIn] · [Your GitHub]
+**Author:** [Rishika C Datta] · [https://www.linkedin.com/in/rishika-c-datta-b9a477313/] · [https://github.com/rishika-datta]
