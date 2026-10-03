@@ -1,0 +1,159 @@
+Retail Sales & Profit Analysis - Loss Priorities and Pareto DAX
+Data model: Orders
+
+Purpose:
+Identify products with negative total profit, rank product losses,
+measure cumulative loss concentration, and support the Loss Priorities page.
+
+Products are identified by Product Name because Product IDs are
+inconsistent in the source dataset.
+
+1. PRODUCT NET LOSS
+-------------------
+
+Product Net Loss =
+VAR ProductProfit =
+    [Total Profit]
+RETURN
+    IF(
+        ProductProfit < 0,
+        -ProductProfit,
+        0
+    )
+
+2. PRODUCT LOSS RANK
+--------------------
+
+Product Loss Rank =
+RANKX(
+    ALL(Orders[Product Name]),
+    [Product Net Loss],
+    ,
+    DESC,
+    DENSE
+)
+
+3. CUMULATIVE LOSS %
+--------------------
+
+Cumulative Loss % =
+VAR CurrentRank =
+    [Product Loss Rank]
+
+VAR CumulativeLoss =
+    SUMX(
+        FILTER(
+            ALL(Orders[Product Name]),
+            [Product Loss Rank] <= CurrentRank
+        ),
+        [Product Net Loss]
+    )
+
+VAR TotalLoss =
+    CALCULATE(
+        [Product Net Loss],
+        ALL(Orders[Product Name])
+    )
+
+RETURN
+    DIVIDE(
+        CumulativeLoss,
+        TotalLoss
+    )
+
+4. LOSS PRIORITY SUPPORTING MEASURES
+------------------------------------
+
+Loss-Making Products =
+COUNTROWS(
+    FILTER(
+        VALUES(Orders[Product Name]),
+        [Total Profit] < 0
+    )
+)
+
+Total Product Net Loss =
+SUMX(
+    VALUES(Orders[Product Name]),
+    [Product Net Loss]
+)
+
+Worst 10 Share =
+DIVIDE(
+    SUMX(
+        TOPN(
+            10,
+            ALL(Orders[Product Name]),
+            [Product Net Loss],
+            DESC
+        ),
+        [Product Net Loss]
+    ),
+    CALCULATE(
+        [Total Product Net Loss],
+        ALL(Orders[Product Name])
+    )
+)
+
+Loss Share =
+DIVIDE(
+    [Product Net Loss],
+    CALCULATE(
+        [Total Product Net Loss],
+        ALL(Orders[Sub-Category])
+    )
+)
+
+5. FORMATTING
+-------------
+
+Product Net Loss: Currency, 0 decimals
+Product Loss Rank: Whole number
+Cumulative Loss %: Percentage, 1 decimal
+Loss-Making Products: Whole number
+Total Product Net Loss: Currency, 0 decimals
+Worst 10 Share: Percentage, 1 decimal
+Loss Share: Percentage, 1 decimal
+
+6. LOSS PRIORITIES PAGE
+-----------------------
+
+Page: Loss Priorities
+
+Slicers:
+- Year
+- Region
+- Category
+
+KPI cards:
+1. Loss-Making Products
+2. Total Product Net Loss
+3. Worst 10 Share
+
+Pareto chart:
+- Visual: Line and clustered column chart
+- X-axis: Product Name
+- Column Y-axis: Product Net Loss
+- Line Y-axis: Cumulative Loss %
+- Filter: Product Loss Rank <= 20
+- Sort: Product Net Loss descending
+
+Loss by Sub-Category:
+- Sub-Category
+- Product Net Loss
+- Sort descending
+
+Top 10 loss table:
+- Product Name
+- Sub-Category
+- Total Sales
+- Total Profit
+- Average Discount
+- Cumulative Loss %
+- Filter: Product Loss Rank <= 10
+- Sort by Total Profit ascending
+
+Interpretation:
+The analysis identifies where losses are concentrated.
+It does not establish why a product is loss-making because detailed
+cost information is not available.

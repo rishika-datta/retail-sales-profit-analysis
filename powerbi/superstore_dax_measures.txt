@@ -1,0 +1,101 @@
+Retail Sales & Profit Analysis - DAX Measures
+Data model: Orders
+Supporting date table: Calendar
+
+Purpose:
+Core measures used by the Overview dashboard and supporting analysis.
+
+1. CALENDAR TABLE
+-----------------
+
+Calendar =
+ADDCOLUMNS(
+    CALENDAR(
+        DATE(YEAR(MIN(Orders[Order Date])), 1, 1),
+        DATE(YEAR(MAX(Orders[Order Date])), 12, 31)
+    ),
+    "Year", YEAR([Date]),
+    "Month Number", MONTH([Date]),
+    "Year-Month", YEAR([Date]) & "-" & FORMAT(MONTH([Date]), "00")
+)
+
+Model setup:
+- Create a one-to-many relationship from Calendar[Date] to Orders[Order Date].
+- Use single-direction filtering from Calendar to Orders.
+- Mark Calendar as the date table using Calendar[Date].
+
+2. CALCULATED COLUMNS
+---------------------
+
+Discount Band =
+SWITCH(
+    TRUE(),
+    Orders[Discount] = 0, "0%",
+    Orders[Discount] <= 0.20, "1-20%",
+    Orders[Discount] <= 0.40, "21-40%",
+    "Above 40%"
+)
+
+Discount Band Sort =
+SWITCH(
+    TRUE(),
+    Orders[Discount] = 0, 1,
+    Orders[Discount] <= 0.20, 2,
+    Orders[Discount] <= 0.40, 3,
+    4
+)
+
+Sort Discount Band by Discount Band Sort.
+
+3. CORE MEASURES
+----------------
+
+Total Sales =
+SUM(Orders[Sales])
+
+Total Profit =
+SUM(Orders[Profit])
+
+Profit Margin =
+DIVIDE(
+    [Total Profit],
+    [Total Sales]
+)
+
+Total Orders =
+DISTINCTCOUNT(Orders[Order ID])
+
+Average Order Value =
+DIVIDE(
+    [Total Sales],
+    [Total Orders]
+)
+
+Average Discount =
+AVERAGE(Orders[Discount])
+
+4. FORMATTING
+-------------
+
+Total Sales: Currency, 0 decimals
+Total Profit: Currency, 0 decimals
+Profit Margin: Percentage, 1 decimal
+Total Orders: Whole number
+Average Order Value: Currency, 2 decimals
+Average Discount: Percentage, 1 decimal
+
+5. REFERENCE VALUES
+-------------------
+
+With all slicers cleared:
+
+Total Sales          2,326,153.86
+Total Profit           292,273.46
+Profit Margin               12.6%
+Total Orders               5,111
+Average Order Value       455.13
+Average Discount            15.5%
+
+Furniture:
+Sales                    754,367.27
+Profit Margin                  2.6%

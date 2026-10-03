@@ -1,0 +1,221 @@
+Retail Sales & Profit Analysis - Discount What-If DAX
+Data model: Orders
+
+Purpose:
+Interactive scenario analysis for a selected discount cap and assumed
+share of affected units not sold.
+
+The scenario is an estimate, not a forecast.
+The dataset does not contain direct list-price or unit-cost fields;
+these values are derived from Sales, Quantity, Discount and Profit.
+
+1. WHAT-IF PARAMETERS
+---------------------
+
+Discount Cap
+- Decimal number
+- Minimum: 0
+- Maximum: 0.80
+- Increment: 0.05
+- Default: 0.30
+
+Discount Cap Value =
+SELECTEDVALUE(
+    'Discount Cap'[Discount Cap],
+    0.30
+)
+
+Units Lost
+- Decimal number
+- Minimum: 0
+- Maximum: 1.00
+- Increment: 0.05
+- Default: 0.00
+
+Units Lost Value =
+SELECTEDVALUE(
+    'Units Lost'[Units Lost],
+    0
+)
+
+Do not create relationships between the parameter tables and Orders.
+
+2. BASELINE
+-----------
+
+Baseline Profit =
+SUM(Orders[Profit])
+
+3. SCENARIO PROFIT
+------------------
+
+Scenario Profit =
+VAR Cap = [Discount Cap Value]
+VAR UnitsLost = [Units Lost Value]
+RETURN
+SUMX(
+    Orders,
+    VAR CurrentDiscount = Orders[Discount]
+    VAR CurrentSales = Orders[Sales]
+    VAR CurrentQuantity = Orders[Quantity]
+    VAR CurrentProfit = Orders[Profit]
+
+    VAR ListPricePerUnit =
+        DIVIDE(
+            CurrentSales,
+            CurrentQuantity * (1 - CurrentDiscount)
+        )
+
+    VAR CostPerUnit =
+        DIVIDE(
+            CurrentSales - CurrentProfit,
+            CurrentQuantity
+        )
+
+    VAR CappedSales =
+        ListPricePerUnit *
+        CurrentQuantity *
+        (1 - Cap)
+
+    VAR ScenarioProfitForLine =
+        (
+            CappedSales -
+            (CostPerUnit * CurrentQuantity)
+        )
+        * (1 - UnitsLost)
+
+    RETURN
+        IF(
+            CurrentDiscount > Cap,
+            ScenarioProfitForLine,
+            CurrentProfit
+        )
+)
+
+4. SCENARIO SALES
+-----------------
+
+Scenario Sales =
+VAR Cap = [Discount Cap Value]
+VAR UnitsLost = [Units Lost Value]
+RETURN
+SUMX(
+    Orders,
+    VAR CurrentDiscount = Orders[Discount]
+    VAR CurrentSales = Orders[Sales]
+    VAR CurrentQuantity = Orders[Quantity]
+
+    VAR ListPricePerUnit =
+        DIVIDE(
+            CurrentSales,
+            CurrentQuantity * (1 - CurrentDiscount)
+        )
+
+    VAR CappedSales =
+        ListPricePerUnit *
+        CurrentQuantity *
+        (1 - Cap)
+
+    RETURN
+        IF(
+            CurrentDiscount > Cap,
+            CappedSales * (1 - UnitsLost),
+            CurrentSales
+        )
+)
+
+5. SCENARIO CHANGE
+------------------
+
+Scenario Profit Change =
+[Scenario Profit] - [Baseline Profit]
+
+Scenario Profit Change % =
+DIVIDE(
+    [Scenario Profit Change],
+    [Baseline Profit]
+)
+
+Scenario Margin =
+DIVIDE(
+    [Scenario Profit],
+    [Scenario Sales]
+)
+
+6. SUPPORTING MEASURES
+----------------------
+
+Lines Above Cap =
+VAR Cap = [Discount Cap Value]
+RETURN
+COUNTROWS(
+    FILTER(
+        Orders,
+        Orders[Discount] > Cap
+    )
+)
+
+Profit On Lines Above Cap =
+VAR Cap = [Discount Cap Value]
+RETURN
+CALCULATE(
+    [Total Profit],
+    Orders[Discount] > Cap
+)
+
+Average Price Increase Required =
+VAR Cap = [Discount Cap Value]
+RETURN
+AVERAGEX(
+    FILTER(
+        Orders,
+        Orders[Discount] > Cap
+    ),
+    DIVIDE(
+        1 - Cap,
+        1 - Orders[Discount]
+    ) - 1
+)
+
+Selected Discount Cap =
+[Discount Cap Value] * 100
+
+Selected Units Lost =
+[Units Lost Value] * 100
+
+7. DISPLAYED PAGE COMPONENTS
+----------------------------
+
+Page: Discount What-If
+
+Controls:
+- Discount Cap slider
+- Units Lost slider
+- Year slicer
+- Region slicer
+- Category slicer
+
+Displayed KPI cards:
+1. Total Profit
+2. Scenario Profit
+3. Profit Change
+4. Scenario Margin
+5. Lines Above Cap
+6. Average Price Increase Required
+
+Sub-category visual:
+- Sub-Category
+- Baseline/Scenario profit comparison or Scenario Profit Change
+
+Region visual:
+- Region
+- Baseline Profit
+- Scenario Profit
+
+Assumptions:
+- Transactions above the selected discount cap are repriced to the cap.
+- Unit cost is held constant.
+- Units Lost represents the assumed share of affected units not sold.
+- The scenario is an estimate, not a forecast.
+- List price and unit cost are derived from the available dataset fields.
+- Customer response is unknown.
